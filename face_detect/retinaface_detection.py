@@ -4,6 +4,7 @@
 '''
 import os
 import torch
+import pathlib
 import torch.backends.cudnn as cudnn
 import numpy as np
 from data import cfg_re50
@@ -20,13 +21,12 @@ class RetinaFaceDetection(object):
     def __init__(self, base_dir, device='cuda', network='RetinaFace-R50'):
         torch.set_grad_enabled(False)
         cudnn.benchmark = True
-        self.pretrained_path = os.path.join(base_dir, 'weights', network+'.pth')
-        self.device = device #torch.cuda.current_device()
+        self.pretrained_path = str(pathlib.Path(base_dir) / 'weights' / f"{network}.pth")
+        self.device = device
         self.cfg = cfg_re50
         self.net = RetinaFace(cfg=self.cfg, phase='test')
         self.load_model()
         self.net = self.net.to(device)
-
         self.mean = torch.tensor([[[[104]], [[117]], [[123]]]]).to(device)
 
     def check_keys(self, pretrained_state_dict):
@@ -44,10 +44,6 @@ class RetinaFaceDetection(object):
         return {f(key): value for key, value in state_dict.items()}
 
     def load_model(self, load_to_cpu=False):
-        #if load_to_cpu:
-        #    pretrained_dict = torch.load(self.pretrained_path, map_location=lambda storage, loc: storage)
-        #else:
-        #    pretrained_dict = torch.load(self.pretrained_path, map_location=lambda storage, loc: storage.cuda())
         pretrained_dict = torch.load(self.pretrained_path, map_location=torch.device('cpu'))
         if "state_dict" in pretrained_dict.keys():
             pretrained_dict = self.remove_prefix(pretrained_dict['state_dict'], 'module.')

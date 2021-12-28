@@ -6,9 +6,11 @@ import os
 import cv2
 import glob
 import time
+import pathlib
 import numpy as np
-from PIL import Image
 import __init_paths
+
+from PIL import Image
 from face_model.face_gan import FaceGAN
 
 class FaceColorization(object):
@@ -21,28 +23,26 @@ class FaceColorization(object):
         out = self.facegan.process(gray)
 
         return out
-        
 
 if __name__=='__main__':
     model = {'name':'GPEN-Colorization-1024', 'size':1024}
     
-    indir = 'examples/grays'
-    outdir = 'examples/outs-colorization'
+    indir = pathlib.Path('examples') / 'grays'
+    outdir = pathlib.Path('examples') / 'outs-colorization'
     os.makedirs(outdir, exist_ok=True)
 
     facecolorizer = FaceColorization(size=model['size'], model=model['name'], channel_multiplier=2)
 
-    files = sorted(glob.glob(os.path.join(indir, '*.*g')))
-    for n, file in enumerate(files[:]):
-        filename = os.path.basename(file)
-        
-        grayf = cv2.imread(file, cv2.IMREAD_GRAYSCALE)
-        grayf = cv2.cvtColor(grayf, cv2.COLOR_GRAY2BGR) # channel: 1->3
+    files = sorted(indir.glob('*.*g'))
+    for n, file in enumerate(files):
+        gray_img = cv2.imread(str(file), cv2.IMREAD_GRAYSCALE)
+        gray_img = cv2.cvtColor(gray_img, cv2.COLOR_GRAY2BGR)
 
-        colorf = facecolorizer.process(grayf)
-        
-        grayf = cv2.resize(grayf, colorf.shape[:2])
-        cv2.imwrite(os.path.join(outdir, '.'.join(filename.split('.')[:-1])+'.jpg'), np.hstack((grayf, colorf)))
-        
+        color_img = facecolorizer.process(gray_img)
+        gray_img = cv2.resize(gray_img, colorf.shape[:2])
+        combined_img = np.hstack((gray_img, color_img))
+
+        filename = str(outdir / f"{file.stem}.jpg")
+        cv2.imwrite(filename, combined_img)
+
         if n%10==0: print(n, file)
-        

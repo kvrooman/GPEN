@@ -1,5 +1,6 @@
 import os
 import torch
+import pathlib
 import numpy as np
 from rrdbnet_arch import RRDBNet
 from torch.nn import functional as F
@@ -12,12 +13,11 @@ class RealESRNet(object):
         self.load_srmodel(base_dir, model)
 
     def load_srmodel(self, base_dir, model):
+        loadnet = pathlib.Path(self.base_dir) / 'weights'
+        loadnet = loadnet / 'rrdb_realesrnet_psnr.pth' if model is None else loadnet / f"{model}.pth"
+        loadnet = torch.load(loadnet)
+
         self.srmodel = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=32, num_block=23, num_grow_ch=32, scale=self.scale)
-        if model is None:
-            loadnet = torch.load(os.path.join(self.base_dir, 'weights', 'rrdb_realesrnet_psnr.pth'))
-        else:
-            loadnet = torch.load(os.path.join(self.base_dir, 'weights', model+'.pth'))
-        #print(loadnet['params_ema'].keys)
         self.srmodel.load_state_dict(loadnet['params_ema'], strict=True)
         self.srmodel.eval()
         self.srmodel = self.srmodel.to(self.device)
