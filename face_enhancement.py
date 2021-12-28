@@ -21,10 +21,10 @@ from face_detect.retinaface_detection import RetinaFaceDetection
 from align_faces import warp_and_crop_face, get_reference_facial_points
 
 class FaceEnhancement(object):
-    def __init__(self, base_dir='./', size=512, model=None, use_sr=True, sr_model=None, channel_multiplier=2, narrow=1, device='cuda'):
+    def __init__(self, base_dir='./', size=512, model=None, use_sr=True, sr_model=None, channel_multiplier=2, narrow=1, key=None, device='cuda'):
         self.faceparser = FaceParse(base_dir, device=device)
         self.facedetector = RetinaFaceDetection(base_dir, device)
-        self.facegan = FaceGAN(base_dir, size, model, channel_multiplier, narrow, device=device)
+        self.facegan = FaceGAN(base_dir, size, model, channel_multiplier, narrow, key, device=device)
         self.srmodel =  RealESRNet(base_dir, sr_model, device=device)
 
         self.use_sr = use_sr
@@ -63,7 +63,7 @@ class FaceEnhancement(object):
                 img = cv2.resize(img, img_sr.shape[:2][::-1])
 
         facebs, landms = self.facedetector.detect(img)
-        
+
         height, width = img.shape[:2]
         orig_faces, enhanced_faces = [], []
         final_img = np.zeros(img.shape, dtype=np.uint8)
@@ -101,11 +101,12 @@ class FaceEnhancement(object):
         img = final_img * final_mask + img * (1.0 - final_mask)
 
         return img, orig_faces, enhanced_faces
-        
+
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='GPEN-BFR-512', help='GPEN model')
+    parser.add_argument('--key', type=str, default=None, help='key of GPEN model')
     parser.add_argument('--size', type=int, default=512, help='resolution of GPEN')
     parser.add_argument('--channel_multiplier', type=int, default=2, help='channel multiplier of GPEN')
     parser.add_argument('--narrow', type=float, default=1, help='channel narrow scale')
@@ -123,6 +124,7 @@ if __name__=='__main__':
                                     sr_model=args.sr_model,
                                     channel_multiplier=args.channel_multiplier,
                                     narrow=args.narrow,
+                                    key=args.key,
                                     device='cuda' if args.use_cuda else 'cpu')
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -131,7 +133,7 @@ if __name__=='__main__':
     files = sorted(pathlib.Path(args.indir).glob('*.*g'))
     progress_bar = tqdm(files, desc="Enhancing Images", unit=" images")
     for index, file in enumerate(progress_bar):
-        
+
         original_img = cv2.imread(str(file), cv2.IMREAD_COLOR)
         if not isinstance(original_img, np.ndarray):
             print(file.name, 'error'); continue
